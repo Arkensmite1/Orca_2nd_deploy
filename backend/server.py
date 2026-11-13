@@ -1,5 +1,6 @@
 from fastapi import FastAPI, APIRouter, HTTPException
 from dotenv import load_dotenv
+from starlette.concurrency import run_in_threadpool
 from starlette.middleware.cors import CORSMiddleware
 from motor.motor_asyncio import AsyncIOMotorClient
 import os
@@ -16,9 +17,16 @@ import offline_safety
 ROOT_DIR = Path(__file__).parent
 load_dotenv(ROOT_DIR / '.env')
 
-mongo_url = os.environ['MONGO_URL']
-client = AsyncIOMotorClient(mongo_url)
-db = client[os.environ['DB_NAME']]
+# MongoDB Atlas (or any MongoDB). MONGODB_URI is accepted as an alias for MONGO_URL.
+mongo_url = os.environ.get("MONGO_URL") or os.environ.get("MONGODB_URI")
+if not mongo_url:
+    raise RuntimeError("MONGO_URL is not set. Use your MongoDB Atlas connection string (mongodb+srv://...).")
+_mongo_kwargs = {"serverSelectionTimeoutMS": 10000}
+if mongo_url.startswith("mongodb+srv://") or "mongodb.net" in mongo_url:
+    import certifi
+    _mongo_kwargs["tlsCAFile"] = certifi.where()
+client = AsyncIOMotorClient(mongo_url, **_mongo_kwargs)
+db = client[os.environ.get("DB_NAME", "orca")]
 
 app = FastAPI(title="ORCA API")
 api = APIRouter(prefix="/api")
@@ -231,7 +239,7 @@ async def conditions(scenario: Optional[str] = None):
 @api.post("/query")
 async def query(body: QueryIn):
     level = body.scenario or await current_scenario()
-    result = agents.run_query(body.text, level)
+    result = await run_in_threadpool(agents.run_query, body.text, level)
     await db.queries.insert_one({"id": str(uuid.uuid4()), "text": body.text,
                                  "intent": result["intent"], "level": result["risk"]["level"],
                                  "ts": now_iso()})
@@ -241,7 +249,7 @@ async def query(body: QueryIn):
 @api.get("/risk")
 async def risk(scenario: Optional[str] = None):
     level = scenario or await current_scenario()
-    result = agents.run_query("Can I go fishing tomorrow morning?", level)
+    result = agents.run_query("Can I go fishing tomorrow morning?", level, use_llm=False)
     r = result["risk"]
     r["dialOffset"] = round(452 - (452 * (100 - r["score"]) / 100))
     return r
@@ -250,13 +258,13 @@ async def risk(scenario: Optional[str] = None):
 @api.get("/trace")
 async def trace(scenario: Optional[str] = None):
     level = scenario or await current_scenario()
-    return agents.run_query("Can I go fishing tomorrow morning?", level)["trace"]
+    return agents.run_query("Can I go fishing tomorrow morning?", level, use_llm=False)["trace"]
 
 
 @api.get("/evidence")
 async def evidence(scenario: Optional[str] = None):
     level = scenario or await current_scenario()
-    ev = agents.run_query("Can I go fishing tomorrow morning?", level)["evidence"]
+    ev = agents.run_query("Can I go fishing tomorrow morning?", level, use_llm=False)["evidence"]
     return {"sources": ev["sources"], "conflict": ev["conflict"]}
 
 

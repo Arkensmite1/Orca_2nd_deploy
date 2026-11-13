@@ -1,6 +1,6 @@
 import { sosAll, sosPut } from "./store";
 
-const BACKEND = process.env.REACT_APP_BACKEND_URL;
+const BACKEND = (process.env.REACT_APP_BACKEND_URL || "").replace(/\/+$/, "");
 
 export const SOS_STATUS = {
   QUEUED: "QUEUED",            // stored on this device only

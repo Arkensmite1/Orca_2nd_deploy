@@ -5,7 +5,7 @@ import { createSos, flushOutbox } from "./sosOutbox";
 import { evaluateSafety } from "./safety";
 import { toast } from "../components/ui/sonner";
 
-const BACKEND = process.env.REACT_APP_BACKEND_URL;
+const BACKEND = (process.env.REACT_APP_BACKEND_URL || "").replace(/\/+$/, "");
 const Ctx = createContext(null);
 const QUIET_ALERTS = new Set(["gps", "nokit", "offline", "fc-stale"]);
 export const DEFAULT_LIMITS = { deviationKm: 1.5, maxWind: 30, maxWave: 1.5, cruiseKmh: 12, geofenceBufferKm: 2 };

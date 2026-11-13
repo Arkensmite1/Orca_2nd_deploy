@@ -25,11 +25,11 @@ tests/      Backend tests
 docs/       Design guidelines, plan and test reports
 ```
 
-## Setup
+## Setup (local)
 ### Backend
 ```bash
 cd backend
-cp .env.example .env        # set MONGO_URL and DB_NAME
+cp .env.example .env        # set MONGO_URL (MongoDB Atlas), DB_NAME, OPENAI_API_KEY
 pip install -r requirements.txt
 uvicorn server:app --host 0.0.0.0 --port 8001 --reload
 ```
@@ -43,3 +43,22 @@ yarn start
 ```
 
 All backend routes are prefixed with `/api`.
+
+## Environment variables
+| Where | Variable | Purpose |
+|---|---|---|
+| backend | `MONGO_URL` | MongoDB Atlas connection string (`mongodb+srv://...`) |
+| backend | `DB_NAME` | Database name (default `orca`) |
+| backend | `OPENAI_API_KEY` | Enables the AI explain-only layer; without it the app uses template answers |
+| backend | `OPENAI_MODEL` | Defaults to `gpt-4o-mini` |
+| backend | `CORS_ORIGINS` | Comma-separated allowed origins (your Vercel URL) |
+| frontend | `REACT_APP_BACKEND_URL` | Public URL of the backend (your Render URL) |
+
+## Deployment
+**1. MongoDB Atlas** – create a cluster, a database user, and allow Render's outbound IPs in Network Access (`0.0.0.0/0` is the simplest for the free tier). Copy the `mongodb+srv://` string.
+
+**2. Backend on Render** – push the repo to GitHub, then *New > Blueprint* and select it (`render.yaml` at the repo root). Fill in `MONGO_URL`, `OPENAI_API_KEY` and `CORS_ORIGINS`. Health check: `/api/health`.
+
+**3. Frontend on Vercel** – *Add New Project*, import the repo, set **Root Directory** to `frontend`, and add `REACT_APP_BACKEND_URL=https://<your-render-service>.onrender.com`. `frontend/vercel.json` handles the build and SPA routing.
+
+After the Vercel URL is known, set it as `CORS_ORIGINS` on Render and redeploy the backend. The Render free tier sleeps when idle, so the first request after a pause can take ~30 s.

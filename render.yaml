@@ -1,17 +1,19 @@
+# Render Blueprint: backend API (FastAPI). The frontend is deployed on Vercel.
 services:
   - type: web
-    name: orca-backend
+    name: orca-api
     runtime: python
     plan: free
     rootDir: backend
     buildCommand: pip install -r requirements.txt
     startCommand: uvicorn server:app --host 0.0.0.0 --port $PORT
     healthCheckPath: /api/health
+    autoDeploy: true
     envVars:
       - key: PYTHON_VERSION
         value: 3.11.9
       - key: MONGO_URL
-        sync: false
+        sync: false          # MongoDB Atlas connection string (mongodb+srv://...)
       - key: DB_NAME
         value: orca
       - key: OPENAI_API_KEY
@@ -19,4 +21,4 @@ services:
       - key: OPENAI_MODEL
         value: gpt-4o-mini
       - key: CORS_ORIGINS
-        sync: false
+        sync: false          # e.g. https://your-app.vercel.app

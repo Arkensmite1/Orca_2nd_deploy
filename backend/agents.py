@@ -33,7 +33,7 @@ def _get_openai_client():
         return None
     try:
         from openai import OpenAI
-        _openai_client = OpenAI(api_key=api_key)
+        _openai_client = OpenAI(api_key=api_key, timeout=20.0, max_retries=1)
         return _openai_client
     except Exception as exc:  # pragma: no cover - defensive, keeps demo alive
         logger.warning("OpenAI client unavailable, falling back to templates: %s", exc)
@@ -279,7 +279,7 @@ def classify_intent(text: str) -> str:
 # ---------------------------------------------------------------------------
 # Orchestrator — runs the full pipeline and produces the grounded answer
 # ---------------------------------------------------------------------------
-def run_query(text: str, scenario: str = "YELLOW") -> dict:
+def run_query(text: str, scenario: str = "YELLOW", use_llm: bool = True) -> dict:
     c = get_conditions(scenario)
     lang = detect_language(text)
     intent = classify_intent(text)
@@ -299,7 +299,7 @@ def run_query(text: str, scenario: str = "YELLOW") -> dict:
     # Response generator (grounded phrasing only)
     answer = build_answer(intent, lang, risk, c, geo)
     skip_rephrase = answer.pop("skipRephrase", False)
-    if answer.get("text") and not skip_rephrase:
+    if use_llm and answer.get("text") and not skip_rephrase:
         answer["text"] = llm_answer(
             text, answer["text"], lang, risk["level"],
             {"wind_kmh": evidence["resolved_wind_kmh"], "wave_m": ocean["wave_m"],

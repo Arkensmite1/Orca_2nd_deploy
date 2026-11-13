@@ -1,7 +1,7 @@
 import L from "leaflet";
 import { tileGet, tileKeys, tilePut } from "./store";
 
-const BACKEND = process.env.REACT_APP_BACKEND_URL;
+const BACKEND = (process.env.REACT_APP_BACKEND_URL || "").replace(/\/+$/, "");
 export const TILE_LAYERS = ["street", "seamark"];
 export const KIT_ZOOMS = [9, 10, 11, 12, 13];
 const NETWORK = {
