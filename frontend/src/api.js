@@ -8,7 +8,14 @@ const client = axios.create({ baseURL: BASE, timeout: 12000 });
 async function safe(promise) {
   try {
     const res = await promise;
-    return res.data;
+    const data = res.data;
+    // Only accept real JSON objects/arrays. An HTML page (wrong backend URL, SPA
+    // fallback, sleeping host) arrives as a string and must never reach the UI.
+    if (data === null || typeof data !== "object") {
+      console.warn("[orca api] ignoring non-JSON response — check REACT_APP_BACKEND_URL");
+      return null;
+    }
+    return data;
   } catch (e) {
     console.warn("[orca api]", e?.message || e);
     return null;

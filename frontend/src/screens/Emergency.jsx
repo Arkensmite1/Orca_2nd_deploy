@@ -119,7 +119,7 @@ export function Emergency() {
         <div className="card">
           <div className="row"><span className="eyebrow-sm">Status</span><Badge tone="orange">HELP REQUESTED</Badge></div>
           <div className="col" style={{ marginTop: 11, gap: 9 }}>
-            {e.timeline.map((t) => (
+            {(e.timeline || []).map((t) => (
               <div className="row" key={t.label}><span className="txt-xs">{t.label}</span><span className="txt-xs" style={{ fontWeight: 700 }}>{t.value}</span></div>
             ))}
             <div className="row">

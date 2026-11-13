@@ -10,6 +10,12 @@ const Ctx = createContext(null);
 const QUIET_ALERTS = new Set(["gps", "nokit", "offline", "fc-stale"]);
 export const DEFAULT_LIMITS = { deviationKm: 1.5, maxWind: 30, maxWave: 1.5, cruiseKmh: 12, geofenceBufferKm: 2 };
 
+// A dataset bundle is only usable if every structure the safety engine reads is present.
+export function validDatasets(d) {
+  return !!d && Array.isArray(d.harbors) && Array.isArray(d.restricted) && Array.isArray(d.hazards)
+    && !!d.route && Array.isArray(d.route.points) && !!d.bbox && Array.isArray(d.center);
+}
+
 async function getJson(path) {
   const res = await fetch(`${BACKEND}${path}`);
   if (!res.ok) throw new Error(`${res.status}`);
@@ -83,7 +89,7 @@ export function OfflineProvider({ children }) {
   useEffect(() => {
     (async () => {
       const [d, f, k, l, v] = await Promise.all([kvGet("datasets"), kvGet("forecast"), kvGet("kit"), kvGet("limits"), kvGet("vesselId")]);
-      if (d) setDatasets(d); if (f) setForecast(f); if (k) setKit(k); if (l) setLimitsState({ ...DEFAULT_LIMITS, ...l });
+      if (validDatasets(d)) setDatasets(d); if (f) setForecast(f); if (k) setKit(k); if (l) setLimitsState({ ...DEFAULT_LIMITS, ...l });
       const id = v || `ORCA-${Math.random().toString(16).slice(2, 8).toUpperCase()}`;
       if (!v) kvSet("vesselId", id);
       setVesselId(id);
@@ -121,6 +127,7 @@ export function OfflineProvider({ children }) {
     setProgress({ phase: "Safety data", done: 0, total: 0, failed: 0, bytes: 0 });
     try {
       const d = await getJson("/api/offline/safety-data");
+      if (!validDatasets(d)) throw new Error("Unexpected safety-data response from server");
       const ds = { ...d, saved_at: new Date().toISOString() };
       await kvSet("datasets", ds); setDatasets(ds);
       setProgress((p) => ({ ...p, phase: "Forecast" }));

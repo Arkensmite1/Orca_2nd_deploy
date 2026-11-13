@@ -60,7 +60,7 @@ export function AppProvider({ children }) {
     let alive = true;
     (async () => {
       const c = await api.conditions(scenario);
-      if (alive && c) setConditions(c);
+      if (alive && c && Array.isArray(c.ribbon) && c.weather && c.ocean) setConditions(c);
     })();
     return () => { alive = false; };
   }, [scenario]);
@@ -68,23 +68,23 @@ export function AppProvider({ children }) {
   useEffect(() => {
     (async () => {
       const [p, pl] = [await api.posts(), await api.poll()];
-      if (p) setPosts(p);
-      if (pl) { setPoll(pl); if (pl.pollVoted) setPollVoted(pl.pollVoted); }
+      if (Array.isArray(p)) setPosts(p);
+      if (pl && Array.isArray(pl.options)) { setPoll(pl); if (pl.pollVoted) setPollVoted(pl.pollVoted); }
       const prof = await api.profile();
       if (prof) {
         setProfile((cur) => ({ ...cur, ...prof }));
         if (prof.language) setSettings((s) => ({ ...s, language: prof.language }));
       }
       const cts = await api.contacts();
-      if (cts && cts.length) setContacts(cts);
+      if (Array.isArray(cts) && cts.length) setContacts(cts);
     })();
   }, []);
 
   useEffect(() => {
     let alive = true;
     Promise.all([api.offlineSnapshot(), api.offlineQueue()]).then(([snapshot, queue]) => {
-      if (alive && snapshot) setOfflineSnapshot(snapshot);
-      if (alive && queue) setOfflineQueue(queue);
+      if (alive && snapshot && Array.isArray(snapshot.layers)) setOfflineSnapshot(snapshot);
+      if (alive && Array.isArray(queue)) setOfflineQueue(queue);
     });
     return () => { alive = false; };
   }, []);
@@ -133,7 +133,7 @@ export function AppProvider({ children }) {
     if (pollVoted) return;
     setPollVoted(optId);
     const updated = await api.vote(optId);
-    if (updated) setPoll(updated);
+    if (updated && Array.isArray(updated.options)) setPoll(updated);
     else setPoll((p) => {
       const total = p.options.reduce((s, o) => s + o.votes, 0) + 1;
       return { ...p, meta: `${total} votes · expires in 3h`,
@@ -170,7 +170,7 @@ export function AppProvider({ children }) {
     // Store-and-forward first: the SOS is on the device before any network call.
     storeSos({ type: sosType, people: 3, details: "Hold-to-send SOS", vesselName: profile.vessel });
     const em = await api.sos(sosType, 3, "RED");
-    if (em) { setEmergencyId(em.id); setEmergency(em); }
+    if (em && em.id) { setEmergencyId(em.id); setEmergency((cur) => ({ ...cur, ...em, timeline: Array.isArray(em.timeline) ? em.timeline : cur.timeline })); }
     else setEmergency((e) => ({ ...e, type: sosType }));
   }, [sosType, storeSos, profile.vessel]);
 

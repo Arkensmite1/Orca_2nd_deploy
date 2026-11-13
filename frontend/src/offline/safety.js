@@ -28,7 +28,7 @@ export function evaluateSafety({ fix, gpsState, datasets, forecast, limits, batt
       alerts.push(alert("deviation", out.deviationKm > limits.deviationKm * 2 ? "CRITICAL" : "WARNING", "Off planned route",
         `${fmtKm(out.deviationKm)} from "${datasets.route.name}" (limit ${fmtKm(limits.deviationKm)}).`));
 
-    const zones = datasets.restricted.map((z) => ({ ...z, inside: pointInPolygon(pos, z.polygon), edgeKm: distanceToPolygonEdgeKm(pos, z.polygon) }));
+    const zones = (datasets.restricted || []).map((z) => ({ ...z, inside: pointInPolygon(pos, z.polygon), edgeKm: distanceToPolygonEdgeKm(pos, z.polygon) }));
     const inside = zones.find((z) => z.inside);
     const closest = zones.reduce((a, b) => (!a || b.edgeKm < a.edgeKm ? b : a), null);
     out.geofence = inside ? { ...inside, state: "INSIDE" } : closest && { ...closest, state: closest.edgeKm < limits.geofenceBufferKm ? "NEAR" : "CLEAR" };
@@ -36,7 +36,7 @@ export function evaluateSafety({ fix, gpsState, datasets, forecast, limits, batt
     else if (out.geofence?.state === "NEAR")
       alerts.push(alert(`gf-near-${closest.id}`, "WARNING", "Approaching restricted zone", `${fmtKm(closest.edgeKm)} from ${closest.name}.`));
 
-    out.hazards = datasets.hazards.map((z) => ({ ...z, distanceKm: haversineKm(pos, [z.lat, z.lng]) - z.radius_km }))
+    out.hazards = (datasets.hazards || []).map((z) => ({ ...z, distanceKm: haversineKm(pos, [z.lat, z.lng]) - z.radius_km }))
       .filter((z) => z.distanceKm < 0.5);
     out.hazards.forEach((z) => alerts.push(alert(`hz-${z.id}`, z.distanceKm <= 0 ? "CRITICAL" : "WARNING", "Hazard nearby",
       `${z.name} — ${z.distanceKm <= 0 ? "you are inside the hazard area" : fmtKm(z.distanceKm) + " away"}.`)));
